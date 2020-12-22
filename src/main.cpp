@@ -1,7 +1,19 @@
+#include <boost/asio.hpp>
+#include <boost/system/error_code.hpp>
+
 #include <iostream>
 
 int main()
 {
-	std::cout << "It works\n";
-	return 0;
+    boost::system::error_code ec;
+    if (ec)
+    {
+        std::cerr << "Error: " << ec.message() << std::endl;
+    }
+    else
+    {
+        std::cout << "OK" << std::endl;
+    }
+
+    return 0;
 }
