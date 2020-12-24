@@ -63,11 +63,10 @@ public:
 private:
     std::string m_url;
     std::string m_port;
-    boost::asio::io_context& m_rIoc;
+
     tcp::resolver m_resolver;
 	boost::beast::websocket::stream<tcp_stream> m_ws;
-	tcp::endpoint m_endpoint;
-	boost::system::error_code m_ec;
+	boost::beast::flat_buffer m_rBuffer;
 };
 
 } // namespace NetworkMonitor

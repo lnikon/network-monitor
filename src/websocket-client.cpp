@@ -8,8 +8,8 @@ WebSocketClient::WebSocketClient(const std::string& url,
                                  boost::asio::io_context& ioc)
     : m_url(url)
     , m_port(port)
-    , m_rIoc(ioc)
-    , m_resolver(ioc)
+    , m_resolver(boost::asio::make_strand(ioc))
+	, m_ws(boost::asio::make_strand(ioc))
 {
 }
 
