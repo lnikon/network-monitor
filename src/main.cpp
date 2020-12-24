@@ -1,7 +1,7 @@
 #include <boost/asio.hpp>
-#include <boost/system/error_code.hpp>
 #include <boost/assert.hpp>
 #include <boost/beast.hpp>
+#include <boost/system/error_code.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -13,15 +13,41 @@ using namespace boost::beast;
 using namespace boost::beast::websocket;
 using tcp = boost::asio::ip::tcp;
 
-void Log(boost::system::error_code ec)
+void Log(const std::string& msg, boost::system::error_code ec)
 {
-    std::cerr << "[" << std::setw(14) << std::this_thread::get_id() << "] "
+    std::cerr << "[" << std::setw(14) << std::this_thread::get_id() << "] (" << msg << ") "
               << (ec ? "Error: " : "OK") << (ec ? ec.message() : "") << std::endl;
 }
 
-void OnConnect(boost::system::error_code ec)
+void onHandshake(
+    // <-- Start of shared data
+    websocket::stream<tcp_stream>& ws, const boost::asio::const_buffer& wBuffer,
+    const boost::asio::const_buffer& rBuffer,
+    // <-- End of shared data
+    const boost::system::error_code& ec)
 {
-    Log(ec);
+    if (ec)
+    {
+        Log("onHandshake", ec);
+        return;
+    }
+}
+
+void onConnect(
+    // <-- Start of shared data
+    websocket::stream<tcp_stream>& ws, const std::string& url,
+    const boost::asio::const_buffer& wBuffer, const boost::asio::const_buffer& rBuffer,
+    // <-- End of shared data
+    const boost::system::error_code& ec)
+{
+    if (ec)
+    {
+        Log("onConnect", ec);
+        return;
+    }
+
+    ws.async_handshake(
+        url, "/", [&ws, &wBuffer, &rBuffer](auto ec) { onHandshake(ws, wBuffer, rBuffer, ec); });
 }
 
 int main()
@@ -29,64 +55,30 @@ int main()
     std::cerr << "[" << std::setw(14) << std::this_thread::get_id() << "] main" << std::endl;
 
     boost::asio::io_context ioc;
-    tcp::socket socket(ioc);
-
     boost::system::error_code ec;
 
-	tcp::resolver resolver(ioc);
-	const std::string url("echo.websocket.org");
-	const std::string port("80");
-	tcp::resolver::results_type results = resolver.resolve(url, port, ec);
-	BOOST_ASSERT_MSG(results.begin() != results.end(), "empty endpoints for echo.websocket.org:80");
-	auto endpoint{*results.begin()};
+    const auto url{"echo.websocket.org"};
+    const auto port{"80"};
+    tcp::resolver resolver(ioc);
+    auto endpoint{resolver.resolve(url, port, ec)};
     if (ec)
     {
-        Log(ec);
+        Log("main", ec);
         return -1;
     }
 
-	socket.connect(endpoint, ec);
-    if (ec)
-    {
-        Log(ec);
-        return -2;
-    }
+    beast::websocket::stream<tcp_stream> ws;
 
-	stream<tcp_stream> ws(std::move(socket));
-	ws.handshake(url, "/", ec);
-    if (ec)
-    {
-        Log(ec);
-        return -3;
-    }
+    const auto msg{std::string{"GET / HTTP/1.1"
+                               "Host: echo.websocket.org"
+                               "Upgrade: websocket"
+                               "Connection: Upgrade"}};
 
-	ws.text(true);
-
-	std::string handshakeStr = "GET / HTTP/1.1"
-							"Host: echo.websocket.org"
-							"Upgrade: websocket"
-							"Connection: Upgrade";
-	boost::asio::const_buffer wbuffer(handshakeStr.data(), handshakeStr.size());
-	ws.write(wbuffer, ec);
-    if (ec)
-    {
-        Log(ec);
-        return -3;
-    }
-
-	boost::beast::flat_buffer rbuffer;
-	ws.read(rbuffer, ec);
-
-	std::cout << "ECHO: "
-			<< boost::beast::make_printable(rbuffer.data())
-			<< std::endl;
-
-	// ioc.run(ec);
-    // if (ec)
-    // {
-    //     Log(ec);
-    //     return -3;
-    // }
+    boost::asio::const_buffer wBuffer{msg.data(), msg.size()};
+    boost::asio::const_buffer rBuffer{};
+    ws.next_layer().async_connect(*endpoint, [&ws, &url, &wBuffer, &rBuffer](auto ec) {
+        onConnect(ws, url, wBuffer, rBuffer, ec);
+    });
 
     return 0;
 }
