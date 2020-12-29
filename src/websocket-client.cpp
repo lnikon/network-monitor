@@ -31,6 +31,7 @@ void WebSocketClient::Connect(
     m_onMessage = onMessage;
     m_onDisconnect = onDisconnect;
 
+
     // Start the chain of async callbacks
     m_resolver.async_resolve(
         m_url, m_port, [this](auto ec, auto endpoint) { onResolve(ec, endpoint); });
@@ -71,6 +72,7 @@ void WebSocketClient::onResolve(const boost::system::error_code& ec,
     }
 
     m_ws.next_layer().expires_after(std::chrono::seconds(5));
+
     m_ws.next_layer().async_connect(*endpoint, [this](auto ec) { onConnect(ec); });
 }
 
@@ -97,7 +99,7 @@ void WebSocketClient::onHandshake(const boost::system::error_code& ec)
 {
     if (ec)
     {
-        Log("OnConnect", ec);
+        Log("OnHandshake", ec);
         if (m_onConnect)
         {
             m_onConnect(ec);
@@ -122,9 +124,11 @@ void WebSocketClient::listenToIncomingMessage(const boost::system::error_code& e
         if (m_onDisconnect)
         {
             m_onDisconnect(ec);
-            return;
         }
+    	return;
     }
+
+
 
     m_ws.async_read(m_rBuffer, [this](auto ec, auto nBytes) {
         onRead(ec, nBytes);
