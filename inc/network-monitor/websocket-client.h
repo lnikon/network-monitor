@@ -16,7 +16,7 @@ class WebSocketClient
 {
 public:
     using tcp = boost::asio::ip::tcp;
-	using tcp_stream = boost::beast::tcp_stream;
+    using tcp_stream = boost::beast::tcp_stream;
 
     /*! \brief Construct a WebSocket client.
      *
@@ -30,7 +30,7 @@ public:
 
     /*! \brief Destructor
      */
-    ~WebSocketClient();
+    ~WebSocketClient() = default;
 
     /*! \brief Connect to the server.
      *
@@ -61,12 +61,23 @@ public:
     void Close(std::function<void(boost::system::error_code)> onClose = nullptr);
 
 private:
+	void onResolve(const boost::system::error_code& ec, tcp::resolver::iterator endpoint);
+	void onConnect(const boost::system::error_code& ec);
+	void onHandshake(const boost::system::error_code& ec);
+	void listenToIncomingMessage(const boost::system::error_code& ec);
+	void onRead(const boost::system::error_code& ec, std::size_t nBytes);
+
+private:
     std::string m_url;
     std::string m_port;
 
     tcp::resolver m_resolver;
-	boost::beast::websocket::stream<tcp_stream> m_ws;
-	boost::beast::flat_buffer m_rBuffer;
+    boost::beast::websocket::stream<tcp_stream> m_ws;
+    boost::beast::flat_buffer m_rBuffer;
+
+    std::function<void(boost::system::error_code)> m_onConnect;
+    std::function<void(boost::system::error_code, std::string&&)> m_onMessage;
+    std::function<void(boost::system::error_code)> m_onDisconnect;
 };
 
 } // namespace NetworkMonitor

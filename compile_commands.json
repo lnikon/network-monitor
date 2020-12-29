@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/nikon/projects/live-network-transport-system/network-monitor/build",
+  "command": "/usr/bin/c++ -I../inc -isystem /home/nikon/.conan/data/boost/1.74.0/_/_/package/47bdab31d0a101fe1d798e4846e78966feed955f/include -isystem /home/nikon/.conan/data/bzip2/1.0.8/_/_/package/91a8b22c2c5a149bc617cfc06cdd21bf23b12567/include -isystem /home/nikon/.conan/data/zlib/1.2.11/_/_/package/19729b9559f3ae196cad45cb2b97468ccb75dcd1/include -isystem /home/nikon/.conan/data/libiconv/1.16/_/_/package/19729b9559f3ae196cad45cb2b97468ccb75dcd1/include -g -o CMakeFiles/network-monitor-tests.dir/tests/websocket-client.cpp.o -c /home/nikon/projects/live-network-transport-system/network-monitor/tests/websocket-client.cpp",
+  "file": "/home/nikon/projects/live-network-transport-system/network-monitor/tests/websocket-client.cpp"
+},
+{
+  "directory": "/home/nikon/projects/live-network-transport-system/network-monitor/build",
+  "command": "/usr/bin/c++ -I../inc -isystem /home/nikon/.conan/data/boost/1.74.0/_/_/package/47bdab31d0a101fe1d798e4846e78966feed955f/include -isystem /home/nikon/.conan/data/bzip2/1.0.8/_/_/package/91a8b22c2c5a149bc617cfc06cdd21bf23b12567/include -isystem /home/nikon/.conan/data/zlib/1.2.11/_/_/package/19729b9559f3ae196cad45cb2b97468ccb75dcd1/include -isystem /home/nikon/.conan/data/libiconv/1.16/_/_/package/19729b9559f3ae196cad45cb2b97468ccb75dcd1/include -g -o CMakeFiles/network-monitor-lib.dir/tests/websocket-client.cpp.o -c /home/nikon/projects/live-network-transport-system/network-monitor/tests/websocket-client.cpp",
+  "file": "/home/nikon/projects/live-network-transport-system/network-monitor/tests/websocket-client.cpp"
+}
+]
