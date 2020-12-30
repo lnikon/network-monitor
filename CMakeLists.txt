@@ -8,7 +8,9 @@ project(network-monitor)
 if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/conaninfo.txt)
     set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
-find_package(Boost 1.74 REQUIRED COMPONENTS system)
+find_package(Boost 1.74 REQUIRED COMPONENTS system unit_test_framework)
+
+enable_testing()
 
 # Export network monitor as a static lib
 set(LIB_SOURCES
@@ -31,7 +33,7 @@ target_link_libraries(
 )
 
 # Export network monitor tests as a executable
-set(TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/websocket-client.cpp")
+set(TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp")
 add_executable(network-monitor-tests ${TEST_SOURCES})
 target_compile_features(
     network-monitor-tests
@@ -44,5 +46,16 @@ target_link_libraries(
     network-monitor-lib
     Boost::Boost
 )
-
+add_test(
+	NAME
+	network-monitor-tests
+	COMMAND
+	$<TARGET_FILE:network-monitor-tests>
+)
+set_tests_properties(
+	network-monitor-tests
+	PROPERTIES
+	PASS_REGULAR_EXPRESSION
+	".*No errors detected"
+)
 
