@@ -9,6 +9,7 @@ if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/conaninfo.txt)
     set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 find_package(Boost 1.74 REQUIRED COMPONENTS system unit_test_framework)
+find_package(OpenSSL 1.1.1)
 
 enable_testing()
 
@@ -30,6 +31,7 @@ target_link_libraries(
     network-monitor-lib
     PUBLIC
     Boost::Boost
+	OpenSSL::OpenSSL
 )
 
 # Export network monitor tests as a executable

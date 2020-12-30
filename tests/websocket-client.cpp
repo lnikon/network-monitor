@@ -1,5 +1,7 @@
 #include "network-monitor/websocket-client.h"
 
+#include <openssl/ssl.h>
+
 #include <iomanip>
 #include <iostream>
 #include <thread>
