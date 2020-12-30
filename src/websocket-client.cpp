@@ -14,11 +14,12 @@ static void Log(const std::string& where, boost::system::error_code ec)
 
 WebSocketClient::WebSocketClient(const std::string& url,
                                  const std::string& port,
-                                 boost::asio::io_context& ioc)
+                                 boost::asio::io_context& ioc,
+                                 boost::asio::ssl::context& ctx)
     : m_url(url)
     , m_port(port)
     , m_resolver(boost::asio::make_strand(ioc))
-    , m_ws(boost::asio::make_strand(ioc))
+    , m_ws(boost::asio::make_strand(ioc), ctx)
 {
 }
 
@@ -30,7 +31,6 @@ void WebSocketClient::Connect(
     m_onConnect = onConnect;
     m_onMessage = onMessage;
     m_onDisconnect = onDisconnect;
-
 
     // Start the chain of async callbacks
     m_resolver.async_resolve(
@@ -71,9 +71,9 @@ void WebSocketClient::onResolve(const boost::system::error_code& ec,
         return;
     }
 
-    m_ws.next_layer().expires_after(std::chrono::seconds(5));
-
-    m_ws.next_layer().async_connect(*endpoint, [this](auto ec) { onConnect(ec); });
+    boost::beast::get_lowest_layer(m_ws).expires_after(std::chrono::seconds(5));
+    boost::beast::get_lowest_layer(m_ws).async_connect(*endpoint,
+                                                       [this](auto ec) { onConnect(ec); });
 }
 
 void WebSocketClient::onConnect(const boost::system::error_code& ec)
@@ -88,11 +88,12 @@ void WebSocketClient::onConnect(const boost::system::error_code& ec)
         return;
     }
 
-    m_ws.next_layer().expires_never();
+    boost::beast::get_lowest_layer(m_ws).expires_never();
     m_ws.set_option(
         boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
 
-    m_ws.async_handshake(m_url, "/", [this](auto ec) { onHandshake(ec); });
+    m_ws.next_layer().async_handshake(boost::asio::ssl::stream_base::client,
+                                      [this](auto ec) { onTlsHandshake(ec); });
 }
 
 void WebSocketClient::onHandshake(const boost::system::error_code& ec)
@@ -117,6 +118,21 @@ void WebSocketClient::onHandshake(const boost::system::error_code& ec)
     }
 }
 
+void WebSocketClient::onTlsHandshake(const boost::system::error_code& ec)
+{
+    if (ec)
+    {
+        Log("OnTlsHandshake", ec);
+        if (m_onConnect)
+        {
+            m_onConnect(ec);
+        }
+        return;
+    }
+
+    m_ws.async_handshake(m_url, "/", [this](auto ec) { onHandshake(ec); });
+}
+
 void WebSocketClient::listenToIncomingMessage(const boost::system::error_code& ec)
 {
     if (ec == boost::asio::error::operation_aborted)
@@ -125,10 +141,8 @@ void WebSocketClient::listenToIncomingMessage(const boost::system::error_code& e
         {
             m_onDisconnect(ec);
         }
-    	return;
+        return;
     }
-
-
 
     m_ws.async_read(m_rBuffer, [this](auto ec, auto nBytes) {
         onRead(ec, nBytes);

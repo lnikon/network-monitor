@@ -21,12 +21,16 @@ BOOST_AUTO_TEST_CASE(cacert_perm)
 BOOST_AUTO_TEST_CASE(class_WebSocketClient)
 {
     const auto url{std::string{"echo.websocket.org"}};
-    const auto port{std::string{"80"}};
+    const auto port{std::string{"443"}};
     const auto message{std::string{"Hello WebSocket"}};
 	auto receivedMsg{std::string{}};
 
     boost::asio::io_context ioc{};
-    NetworkMonitor::WebSocketClient client(url, port, ioc);
+	boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
+	sslCtx.load_verify_file(TESTS_CACERT_PEM);
+	boost::system::error_code ec;
+
+    NetworkMonitor::WebSocketClient client(url, port, ioc, sslCtx);
 
     bool connected{false};
     bool messageSent{false};

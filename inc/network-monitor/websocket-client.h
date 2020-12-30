@@ -4,7 +4,9 @@
 #include <string>
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
+#include <boost/beast/ssl.hpp>
 #include <boost/system/system_error.hpp>
 
 namespace NetworkMonitor
@@ -26,7 +28,10 @@ public:
      *  \param The The port of the server.
      *  \param The io_context object. The user takes care of calling ioc.run().
      */
-    WebSocketClient(const std::string& url, const std::string& port, boost::asio::io_context& ioc);
+    WebSocketClient(const std::string& url,
+                    const std::string& port,
+                    boost::asio::io_context& ioc,
+                    boost::asio::ssl::context& ctx);
 
     /*! \brief Destructor
      */
@@ -61,18 +66,19 @@ public:
     void Close(std::function<void(boost::system::error_code)> onClose = nullptr);
 
 private:
-	void onResolve(const boost::system::error_code& ec, tcp::resolver::iterator endpoint);
-	void onConnect(const boost::system::error_code& ec);
-	void onHandshake(const boost::system::error_code& ec);
-	void listenToIncomingMessage(const boost::system::error_code& ec);
-	void onRead(const boost::system::error_code& ec, std::size_t nBytes);
+    void onResolve(const boost::system::error_code& ec, tcp::resolver::iterator endpoint);
+    void onConnect(const boost::system::error_code& ec);
+    void onHandshake(const boost::system::error_code& ec);
+    void onTlsHandshake(const boost::system::error_code& ec);
+    void listenToIncomingMessage(const boost::system::error_code& ec);
+    void onRead(const boost::system::error_code& ec, std::size_t nBytes);
 
 private:
     std::string m_url;
     std::string m_port;
 
     tcp::resolver m_resolver;
-    boost::beast::websocket::stream<tcp_stream> m_ws;
+    boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> m_ws;
     boost::beast::flat_buffer m_rBuffer;
 
     std::function<void(boost::system::error_code)> m_onConnect;

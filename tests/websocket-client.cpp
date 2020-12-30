@@ -13,7 +13,8 @@ int main()
     const auto message{std::string{"Hello WebSocket"}};
 
     boost::asio::io_context ioc{};
-    NetworkMonitor::WebSocketClient client(url, port, ioc);
+    boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
+    NetworkMonitor::WebSocketClient client(url, port, ioc, sslCtx);
 
     bool connected{false};
     bool messageSent{false};
