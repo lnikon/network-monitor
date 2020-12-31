@@ -9,7 +9,8 @@ if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/conaninfo.txt)
     set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 find_package(Boost 1.74 REQUIRED COMPONENTS system unit_test_framework)
-find_package(OpenSSL 1.1.1)
+find_package(OpenSSL 1.1.1 REQUIRED)
+find_package(CURL 7.74 REQUIRED)
 
 enable_testing()
 
@@ -25,17 +26,18 @@ target_include_directories(
 target_compile_features(
     network-monitor-lib
     PUBLIC
-    cxx_std_14
+    cxx_std_17
 )
 target_link_libraries(
     network-monitor-lib
     PUBLIC
     Boost::Boost
 	OpenSSL::OpenSSL
+	CURL::CURL
 )
 
 # Export network monitor tests as a executable
-set(TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp")
+set(TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/file-downloader.cpp")
 add_executable(network-monitor-tests ${TEST_SOURCES})
 target_compile_features(
     network-monitor-tests
@@ -52,6 +54,7 @@ target_link_libraries(
     PRIVATE
     network-monitor-lib
     Boost::Boost
+	CURL::CURL
 )
 add_test(
 	NAME

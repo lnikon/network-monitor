@@ -7,6 +7,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 using NetworkMonitor::WebSocketClient;
@@ -20,14 +21,17 @@ BOOST_AUTO_TEST_CASE(cacert_perm)
 
 BOOST_AUTO_TEST_CASE(class_WebSocketClient)
 {
+    // Setup network feed staff
     const auto url{std::string{"ltnm.learncppthroughprojects.com"}};
     const auto port{std::string{"443"}};
     const auto endpoint{std::string{"/network-events"}};
     auto receivedMsg{std::string{}};
 
+    // Username and password for auth
     const auto username{std::string{"fake_username"}};
     const auto password{std::string{"fake_password"}};
 
+    // Test frame
     std::stringstream ss{};
     ss << "STOMP" << std::endl
        << "accept-version:1.2" << std::endl
@@ -39,6 +43,7 @@ BOOST_AUTO_TEST_CASE(class_WebSocketClient)
 
     const auto message{std::string{ss.str()}};
 
+    // Boost.Asio staff
     boost::asio::io_context ioc{};
     boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
     sslCtx.load_verify_file(TESTS_CACERT_PEM);

@@ -1,6 +1,7 @@
 #ifndef WEBSOCKET_CLIENT_H
 #define WEBSOCKET_CLIENT_H
 
+#include <filesystem>
 #include <string>
 
 #include <boost/asio.hpp>
@@ -11,6 +12,16 @@
 
 namespace NetworkMonitor
 {
+
+/*! \brief Download a file from a remote HTTPS URL.
+ *
+ *	\param fileUrl URL of the remote file.
+ *	\param destination Path to save the downloaded file.
+ *	\param destination Path to the certificate.
+ */
+bool DownloadFile(const std::string& fileUrl,
+                  const std::filesystem::path& destination,
+                  const std::filesystem::path& caCertFile = {});
 
 /*! \brief Client to connect to a WebSocket server over plain TCP
  */
@@ -79,7 +90,7 @@ private:
 private:
     std::string m_url;
     std::string m_port;
-	std::string m_endpoint;
+    std::string m_endpoint;
 
     tcp::resolver m_resolver;
     boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> m_ws;
