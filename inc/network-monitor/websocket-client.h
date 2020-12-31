@@ -25,11 +25,14 @@ public:
      *  \note This constructor does not initiate a connection.
      *
      *  \param url The URL of the server.
-     *  \param The The port of the server.
-     *  \param The io_context object. The user takes care of calling ioc.run().
+     *  \param prt The The port of the server.
+     *  \param endpoint The endpoint of the host.
+     *  \param ioc The io_context object. The user takes care of calling ioc.run().
+     *  \param ctx The ssl::context object. Used to provide support for tls.
      */
     WebSocketClient(const std::string& url,
                     const std::string& port,
+                    const std::string& endpoint,
                     boost::asio::io_context& ioc,
                     boost::asio::ssl::context& ctx);
 
@@ -76,6 +79,7 @@ private:
 private:
     std::string m_url;
     std::string m_port;
+	std::string m_endpoint;
 
     tcp::resolver m_resolver;
     boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> m_ws;

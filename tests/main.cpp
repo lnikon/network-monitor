@@ -6,8 +6,8 @@
 #include <boost/asio.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <string>
 #include <filesystem>
+#include <string>
 
 using NetworkMonitor::WebSocketClient;
 
@@ -15,22 +15,36 @@ BOOST_AUTO_TEST_SUITE(network_monitor);
 
 BOOST_AUTO_TEST_CASE(cacert_perm)
 {
-	BOOST_CHECK(std::filesystem::exists(TESTS_CACERT_PEM));
+    BOOST_CHECK(std::filesystem::exists(TESTS_CACERT_PEM));
 }
 
 BOOST_AUTO_TEST_CASE(class_WebSocketClient)
 {
-    const auto url{std::string{"echo.websocket.org"}};
+    const auto url{std::string{"ltnm.learncppthroughprojects.com"}};
     const auto port{std::string{"443"}};
-    const auto message{std::string{"Hello WebSocket"}};
-	auto receivedMsg{std::string{}};
+    const auto endpoint{std::string{"/network-events"}};
+    auto receivedMsg{std::string{}};
+
+    const auto username{std::string{"fake_username"}};
+    const auto password{std::string{"fake_password"}};
+
+    std::stringstream ss{};
+    ss << "STOMP" << std::endl
+       << "accept-version:1.2" << std::endl
+       << "host:transportforlondon.com" << std::endl
+       << "login:" << username << std::endl
+       << "passcode:" << password << std::endl
+       << std::endl
+       << '\0';
+
+    const auto message{std::string{ss.str()}};
 
     boost::asio::io_context ioc{};
-	boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
-	sslCtx.load_verify_file(TESTS_CACERT_PEM);
-	boost::system::error_code ec;
+    boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
+    sslCtx.load_verify_file(TESTS_CACERT_PEM);
+    boost::system::error_code ec;
 
-    NetworkMonitor::WebSocketClient client(url, port, ioc, sslCtx);
+    NetworkMonitor::WebSocketClient client(url, port, endpoint, ioc, sslCtx);
 
     bool connected{false};
     bool messageSent{false};
@@ -50,22 +64,31 @@ BOOST_AUTO_TEST_CASE(class_WebSocketClient)
 
     auto onClose{[&disconnected](auto ec) { disconnected = !ec; }};
 
-    auto onReceive{
-        [&client, &onClose, &messageReceived, &messageMatches, &message, &receivedMsg](auto ec, auto received) {
-            messageReceived = !ec;
-            messageMatches = message == received;
-			receivedMsg = received;
-            client.Close(onClose);
-        }};
+    auto onReceive{[&client, &onClose, &messageReceived, &messageMatches, &message, &receivedMsg](
+                       auto ec, auto received) {
+        auto checkResponse = [](const auto resp) {
+            bool ok{true};
+            ok &= resp.find("ERROR") != std::string::npos;
+            ok &= resp.find("ValidationInvalidAuth") != std::string::npos;
+            return ok;
+        };
+
+        messageReceived = !ec;
+        messageMatches = checkResponse(received);
+        receivedMsg = received;
+        client.Close(onClose);
+    }};
 
     client.Connect(onConnect, onReceive);
     ioc.run();
 
-	BOOST_CHECK(connected);
-	BOOST_CHECK(messageSent);
-	BOOST_CHECK(messageReceived);
-	BOOST_CHECK_EQUAL(message, receivedMsg);
-	BOOST_CHECK(disconnected);
+    BOOST_CHECK(connected);
+    BOOST_CHECK(messageSent);
+    BOOST_CHECK(messageReceived);
+    BOOST_CHECK(messageMatches);
+    std::cerr << receivedMsg << "\n";
+    // BOOST_CHECK_EQUAL(message, receivedMsg);
+    BOOST_CHECK(disconnected);
 }
 
 BOOST_AUTO_TEST_SUITE_END();
