@@ -40,7 +40,7 @@ bool DownloadFile(const std::string& fileUrl,
         {
             curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, networkFile);
 
-            // This call will block
+            // Note: curl_easy_perform is a blocking call.
             if (CURLE_OK != curl_easy_perform(curlHandle))
             {
                 fclose(networkFile);

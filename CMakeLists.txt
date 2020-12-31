@@ -11,12 +11,13 @@ endif()
 find_package(Boost 1.74 REQUIRED COMPONENTS system unit_test_framework)
 find_package(OpenSSL 1.1.1 REQUIRED)
 find_package(CURL 7.74 REQUIRED)
+find_package(nlohmann_json 3.9.1 REQUIRED)
 
 enable_testing()
 
 # Export network monitor as a static lib
 set(LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/websocket-client.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/websocket-client.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/file-downloader.cpp")
 add_library(network-monitor-lib STATIC ${LIB_SOURCES})
 target_include_directories(
     network-monitor-lib
@@ -34,6 +35,7 @@ target_link_libraries(
     Boost::Boost
 	OpenSSL::OpenSSL
 	CURL::CURL
+	nlohmann_json::nlohmann_json
 )
 
 # Export network monitor tests as a executable
@@ -48,6 +50,8 @@ target_compile_definitions(
 	network-monitor-tests
 	PRIVATE
 	TESTS_CACERT_PEM="${CMAKE_CURRENT_SOURCE_DIR}/tests/cacert.pem"
+	TESTS_NETWORK_LAYOUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tests/network-layout.json"
+
 )
 target_link_libraries(
     network-monitor-tests
@@ -55,6 +59,7 @@ target_link_libraries(
     network-monitor-lib
     Boost::Boost
 	CURL::CURL
+	nlohmann_json::nlohmann_json
 )
 add_test(
 	NAME
