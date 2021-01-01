@@ -17,7 +17,11 @@ enable_testing()
 
 # Export network monitor as a static lib
 set(LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/websocket-client.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/file-downloader.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/websocket-client.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/file-downloader.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/transport-network.cpp"
+)
+
 add_library(network-monitor-lib STATIC ${LIB_SOURCES})
 target_include_directories(
     network-monitor-lib
