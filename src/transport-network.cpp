@@ -1,29 +1,28 @@
 #include <network-monitor/transport-network.h>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace NetworkMonitor
 {
 
-TransportNetwork::TransportNetwork()
+std::vector<TransportNetwork::GraphEdge>::const_iterator
+TransportNetwork::GraphNode::FindEdgeForRoute(const std::shared_ptr<RouteInternal>& route)
 {
+    return std::find_if(std::begin(edges), std::end(edges), [&route](const auto& edge) {
+        return edge.route == route;
+    });
 }
 
-TransportNetwork::TransportNetwork(const TransportNetwork& copied)
-{
-}
+TransportNetwork::TransportNetwork() = default;
 
-TransportNetwork::TransportNetwork(TransportNetwork&& moved)
-{
-}
+TransportNetwork::TransportNetwork(const TransportNetwork& copied) = default;
 
-TransportNetwork& TransportNetwork::operator=(const TransportNetwork& copied)
-{
-}
+TransportNetwork::TransportNetwork(TransportNetwork&& moved) = default;
 
-TransportNetwork& TransportNetwork::operator=(TransportNetwork&& moved)
-{
-}
+TransportNetwork& TransportNetwork::operator=(const TransportNetwork& copied) = default;
+
+TransportNetwork& TransportNetwork::operator=(TransportNetwork&& moved) = default;
 
 bool TransportNetwork::AddStation(const Station& station)
 {
@@ -58,20 +57,20 @@ bool TransportNetwork::AddLine(const Line& line)
     return true;
 }
 
-bool TransportNetwork::RecordPassengerEvent(const Id& station, const PassengerEvent& event)
+bool TransportNetwork::RecordPassengerEvent(const PassengerEvent& event)
 {
-    const auto node{getStation(station)};
+    const auto node{getStation(event.stationId)};
     if (node == nullptr)
     {
         return false;
     }
 
-    switch (event)
+    switch (event.type)
     {
-    case PassengerEvent::In:
+    case PassengerEvent::Type::In:
         node->passengerCount++;
         return true;
-    case PassengerEvent::Out:
+    case PassengerEvent::Type::Out:
         node->passengerCount--;
         return true;
     default:
@@ -98,14 +97,14 @@ std::vector<Id> TransportNetwork::GetRoutesServingStation(const Id& station) con
         throw std::runtime_error("Could not find station in the network: " + station);
     }
 
-    const auto& edges {node->edges};
+    const auto& edges{node->edges};
     std::vector<Id> routes{};
     routes.reserve(edges.size());
-	const auto size = edges.size();
-	for (const auto& edge : edges)
-	{
-		routes.push_back(edge.route->id);
-	}
+    const auto size = edges.size();
+    for (const auto& edge : edges)
+    {
+        routes.push_back(edge.route->id);
+    }
 
     // FIXME: In the worst case, we are iterating over all routes
     // for all lines in the network. We may want to optimize this.
@@ -120,23 +119,117 @@ std::vector<Id> TransportNetwork::GetRoutesServingStation(const Id& station) con
             }
         }
     }
+
+	return routes;
 }
 
 bool TransportNetwork::SetTravelTime(const Id& stationA,
                                      const Id& stationB,
                                      const unsigned int travelTime)
 {
+	const auto stationANode{getStation(stationA)};
+	const auto stationBNode{getStation(stationB)};
+	if (stationANode == nullptr || stationBNode == nullptr)
+	{
+		return false;
+	}
+
+	bool foundAnyEdge{false};
+	auto setTravelTime {[&foundAnyEdge, &travelTime](auto from, auto to){
+		for (auto& edge: from->edges)
+		{
+			if (edge.nextStop == to)
+			{
+				edge.travelTime = travelTime;
+				foundAnyEdge = true;
+			}
+		}
+	}};
+
+	setTravelTime(stationANode, stationBNode);
+	setTravelTime(stationBNode, stationANode);
+
+	return foundAnyEdge;
 }
 
 unsigned int TransportNetwork::GetTravelTime(const Id& stationA, const Id& stationB)
 {
+	if (stationA == stationB)
+	{
+		return 0;
+	}
+
+    const auto stationANode{getStation(stationA)};
+    const auto stationBNode{getStation(stationB)};
+    if (stationANode == nullptr || stationBNode == nullptr)
+    {
+        return 0;
+    }
+
+    for (const auto& edge : stationANode->edges)
+    {
+        if (edge.nextStop == stationBNode)
+        {
+            return edge.travelTime;
+        }
+    }
+
+    for (const auto& edge : stationBNode->edges)
+    {
+        if (edge.nextStop == stationANode)
+        {
+            return edge.travelTime;
+        }
+    }
+
+	return 0;
 }
 
-unsigned int TransportNetwork::GetTravelTime(const Line& line,
-                                             const Route& route,
+unsigned int TransportNetwork::GetTravelTime(const Id& line,
+                                             const Id& route,
                                              const Id& stationA,
                                              const Id& stationB)
 {
+    auto routeInternal{getRoute(line, route)};
+    if (routeInternal == nullptr)
+    {
+        return 0;
+    }
+
+    const auto& stationANode{getStation(stationA)};
+    const auto& stationBNode{getStation(stationB)};
+    if (stationANode == nullptr || stationBNode == nullptr)
+    {
+        return 0;
+    }
+
+    unsigned int travelTime{0};
+    bool found{false};
+    for (const auto& stop : routeInternal->stops)
+    {
+        if (stop == stationANode)
+        {
+            found = true;
+        }
+
+        if (stop == stationBNode)
+        {
+            return travelTime;
+        }
+
+        if (found)
+        {
+            auto edgeIt{stop->FindEdgeForRoute(routeInternal)};
+            if (edgeIt == stop->edges.end())
+            {
+                return 0;
+            }
+
+            travelTime += edgeIt->travelTime;
+        }
+    }
+
+    return travelTime;
 }
 
 std::shared_ptr<TransportNetwork::GraphNode> TransportNetwork::getStation(const Id& id) const
@@ -188,6 +281,36 @@ bool TransportNetwork::addRouteToLine(
     lineInternal->routes[route.id] = std::move(routeInternal);
 
     return true;
+}
+
+std::shared_ptr<TransportNetwork::LineInternal> TransportNetwork::getLine(const Id& lineId)
+{
+    auto lineIt = m_lines.find(lineId);
+    if (lineIt == m_lines.end())
+    {
+        return nullptr;
+    }
+
+    return lineIt->second;
+}
+
+std::shared_ptr<TransportNetwork::RouteInternal> TransportNetwork::getRoute(const Id& lineId,
+                                                                            const Id& routeId)
+{
+    auto line{getLine(lineId)};
+    if (!line)
+    {
+        return nullptr;
+    }
+
+    const auto& routes{line->routes};
+    auto routeIt = routes.find(routeId);
+    if (routeIt == routes.end())
+    {
+        return nullptr;
+    }
+
+    return routeIt->second;
 }
 
 } // namespace NetworkMonitor

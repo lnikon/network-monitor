@@ -59,15 +59,21 @@ struct Line
     std::vector<Route> routes;
 };
 
-class TransportNetwork
+struct PassengerEvent
 {
-public:
-    enum class PassengerEvent
+    enum class Type
     {
         In,
         Out
     };
 
+    Id stationId;
+    Type type;
+};
+
+class TransportNetwork
+{
+public:
     TransportNetwork();
     TransportNetwork(const TransportNetwork& copied);
     TransportNetwork(TransportNetwork&& moved);
@@ -77,7 +83,7 @@ public:
     bool AddStation(const Station& station);
     bool AddLine(const Line& line);
 
-    bool RecordPassengerEvent(const Id& station, const PassengerEvent& event);
+    bool RecordPassengerEvent(const PassengerEvent& event);
 
     long long int GetPassengerCount(const Id& station) const;
 
@@ -88,7 +94,7 @@ public:
     unsigned int GetTravelTime(const Id& stationA, const Id& stationB);
 
     unsigned int
-    GetTravelTime(const Line& line, const Route& route, const Id& stationA, const Id& stationB);
+    GetTravelTime(const Id& line, const Id& route, const Id& stationA, const Id& stationB);
 
 private:
     struct GraphNode;
@@ -102,6 +108,8 @@ private:
         Name name{};
         long long int passengerCount{0};
         std::vector<GraphEdge> edges{};
+
+        std::vector<GraphEdge>::const_iterator FindEdgeForRoute(const std::shared_ptr<RouteInternal>& route);
     };
 
     struct GraphEdge
@@ -134,6 +142,8 @@ private:
     std::shared_ptr<LineInternal> getLine(const Id& id) const;
 
     bool addRouteToLine(const Route& route, const std::shared_ptr<LineInternal>& lineInternal);
+    std::shared_ptr<LineInternal> getLine(const Id& lineId);
+    std::shared_ptr<RouteInternal> getRoute(const Id& lineId, const Id& routeId);
 };
 
 } // namespace NetworkMonitor
