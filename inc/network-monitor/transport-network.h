@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 namespace Utility
 {
 template <typename IdType, typename ObjectType> IdType getId(const ObjectType& object)
@@ -81,6 +83,7 @@ public:
     TransportNetwork& operator=(TransportNetwork&& moved);
 
     bool AddStation(const Station& station);
+
     bool AddLine(const Line& line);
 
     bool RecordPassengerEvent(const PassengerEvent& event);
@@ -95,6 +98,8 @@ public:
 
     unsigned int
     GetTravelTime(const Id& line, const Id& route, const Id& stationA, const Id& stationB);
+
+	bool FromJson(nlohmann::json&& src);	
 
 private:
     struct GraphNode;

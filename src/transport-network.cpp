@@ -120,44 +120,44 @@ std::vector<Id> TransportNetwork::GetRoutesServingStation(const Id& station) con
         }
     }
 
-	return routes;
+    return routes;
 }
 
 bool TransportNetwork::SetTravelTime(const Id& stationA,
                                      const Id& stationB,
                                      const unsigned int travelTime)
 {
-	const auto stationANode{getStation(stationA)};
-	const auto stationBNode{getStation(stationB)};
-	if (stationANode == nullptr || stationBNode == nullptr)
-	{
-		return false;
-	}
+    const auto stationANode{getStation(stationA)};
+    const auto stationBNode{getStation(stationB)};
+    if (stationANode == nullptr || stationBNode == nullptr)
+    {
+        return false;
+    }
 
-	bool foundAnyEdge{false};
-	auto setTravelTime {[&foundAnyEdge, &travelTime](auto from, auto to){
-		for (auto& edge: from->edges)
-		{
-			if (edge.nextStop == to)
-			{
-				edge.travelTime = travelTime;
-				foundAnyEdge = true;
-			}
-		}
-	}};
+    bool foundAnyEdge{false};
+    auto setTravelTime{[&foundAnyEdge, &travelTime](auto from, auto to) {
+        for (auto& edge : from->edges)
+        {
+            if (edge.nextStop == to)
+            {
+                edge.travelTime = travelTime;
+                foundAnyEdge = true;
+            }
+        }
+    }};
 
-	setTravelTime(stationANode, stationBNode);
-	setTravelTime(stationBNode, stationANode);
+    setTravelTime(stationANode, stationBNode);
+    setTravelTime(stationBNode, stationANode);
 
-	return foundAnyEdge;
+    return foundAnyEdge;
 }
 
 unsigned int TransportNetwork::GetTravelTime(const Id& stationA, const Id& stationB)
 {
-	if (stationA == stationB)
-	{
-		return 0;
-	}
+    if (stationA == stationB)
+    {
+        return 0;
+    }
 
     const auto stationANode{getStation(stationA)};
     const auto stationBNode{getStation(stationB)};
@@ -182,7 +182,7 @@ unsigned int TransportNetwork::GetTravelTime(const Id& stationA, const Id& stati
         }
     }
 
-	return 0;
+    return 0;
 }
 
 unsigned int TransportNetwork::GetTravelTime(const Id& line,
@@ -230,6 +230,56 @@ unsigned int TransportNetwork::GetTravelTime(const Id& line,
     }
 
     return travelTime;
+}
+
+bool TransportNetwork::FromJson(nlohmann::json&& src)
+{
+    bool ok{true};
+    for (const auto& lineJson : src["lines"])
+    {
+        auto line{Line{std::move(lineJson["line_id"].get<std::string>()),
+                       std::move(lineJson["name"].get<std::string>())}};
+        for (const auto& routeJson : lineJson["routes"])
+        {
+            auto route{Route{std::move(routeJson["route_id"].get<std::string>()),
+                             std::move(routeJson["line_id"].get<std::string>()),
+                             std::move(routeJson["start_station_id"].get<std::string>()),
+                             std::move(routeJson["end_station_id"].get<std::string>())}};
+
+            for (const auto& stop : routeJson["route_stops"])
+            {
+                route.stops.emplace_back(stop);
+            }
+
+            line.routes.emplace_back(std::move(route));
+        }
+
+        ok &= AddLine(line);
+        if (!ok)
+        {
+            throw std::runtime_error("Could not add line " + line.id);
+        }
+    }
+
+    for (const auto& stationJson : src["stations"])
+    {
+        Station station{std::move(stationJson["station_id"].get<std::string>()),
+                        std::move(stationJson["name"].get<std::string>())};
+        ok &= AddStation(station);
+        if (!ok)
+        {
+            throw std::runtime_error("Could not add station " + station.id);
+        }
+    }
+
+    for (const auto& travelTimeJson : src["travel_times"])
+    {
+        ok &= SetTravelTime(std::move(travelTimeJson["start_station_id"].get<std::string>()),
+                            std::move(travelTimeJson["end_station_id"].get<std::string>()),
+                            std::move(travelTimeJson["travel_time"].get<unsigned int>()));
+    }
+
+    return ok;
 }
 
 std::shared_ptr<TransportNetwork::GraphNode> TransportNetwork::getStation(const Id& id) const

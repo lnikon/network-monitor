@@ -1,20 +1,30 @@
-#include "network-monitor/websocket-client.h"
+#include <network-monitor/websocket-client.h>
 
 #include <openssl/ssl.h>
+
+#include <boost/test/unit_test.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/beast.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <iomanip>
 #include <iostream>
 #include <thread>
 
-int main()
+BOOST_AUTO_TEST_SUITE(network_monitor);
+
+BOOST_AUTO_TEST_CASE(websocket_client)
 {
     const auto url{std::string{"echo.websocket.org"}};
     const auto port{std::string{"80"}};
+    const auto endpoint{std::string{"/network-events"}};
     const auto message{std::string{"Hello WebSocket"}};
 
     boost::asio::io_context ioc{};
     boost::asio::ssl::context sslCtx{boost::asio::ssl::context::tlsv12_client};
-    NetworkMonitor::WebSocketClient client(url, port, ioc, sslCtx);
+    NetworkMonitor::BoostWebSocketClient client(url, port, endpoint, ioc, sslCtx);
 
     bool connected{false};
     bool messageSent{false};
@@ -49,13 +59,11 @@ int main()
     if (ok)
     {
         std::cout << "OK\n";
-        return 0;
     }
     else
     {
         std::cerr << "Test Failed\n";
-        return 1;
     }
-
-    return 0;
 }
+
+BOOST_AUTO_TEST_SUITE_END(); // network_monitor

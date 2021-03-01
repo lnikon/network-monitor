@@ -47,7 +47,8 @@ set(
 	TEST_SOURCES 
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp" 
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/file-downloader.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/tests/transport-network.cpp")
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/transport-network.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/client-websocket.cpp")
 add_executable(network-monitor-tests ${TEST_SOURCES})
 target_compile_features(
     network-monitor-tests

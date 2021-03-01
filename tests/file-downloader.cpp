@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(file_downloader)
 BOOST_AUTO_TEST_CASE(file_parser)
 {
     // Download network layout file
-	const std::filesystem::path sourceFile{TESTS_NETWORK_LAYOUT_JSON};
+    const std::filesystem::path sourceFile{TESTS_NETWORK_LAYOUT_JSON};
     auto json = NetworkMonitor::ParseJsonFile(sourceFile);
     BOOST_CHECK(json.is_object());
     BOOST_CHECK(json.contains("lines"));
