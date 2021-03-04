@@ -62,11 +62,17 @@ target_compile_definitions(
 	TESTS_NETWORK_LAYOUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tests/network-layout.json"
 
 )
+target_include_directories(
+    network-monitor-tests
+    PUBLIC
+    inc
+)
 target_link_libraries(
     network-monitor-tests
     PRIVATE
     network-monitor-lib
     Boost::Boost
+	OpenSSL::OpenSSL
 	CURL::CURL
 	nlohmann_json::nlohmann_json
 )

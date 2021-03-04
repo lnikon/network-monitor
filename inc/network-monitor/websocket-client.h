@@ -19,7 +19,7 @@ void Log(const std::string& where, boost::system::error_code ec);
  *
  *	\param fileUrl URL of the remote file.
  *	\param destination Path to save the downloaded file.
- *	\param destination Path to the certificate.
+ *	\param caCertFile Path to the certificate.
  */
 bool DownloadFile(const std::string& fileUrl,
                   const std::filesystem::path& destination,
@@ -38,7 +38,7 @@ public:
      *  \note This constructor does not initiate a connection.
      *
      *  \param url The URL of the server.
-     *  \param prt The The port of the server.
+     *  \param port The The port of the server.
      *  \param endpoint The endpoint of the host.
      *  \param ioc The io_context object. The user takes care of calling ioc.run().
      *  \param ctx The ssl::context object. Used to provide support for tls.
