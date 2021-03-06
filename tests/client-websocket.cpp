@@ -16,12 +16,14 @@
 #include <thread>
 
 using NetworkMonitor::MockResolver;
+using NetworkMonitor::MockTcpStream;
 using NetworkMonitor::MockWebSocketClient;
 
 struct WebSocketClientTestFixture {
 	WebSocketClientTestFixture()
 	{
 		MockResolver::resolve_ec = {};
+		MockTcpStream::connect_ec = {};
 	}
 };
 
@@ -50,6 +52,31 @@ BOOST_AUTO_TEST_CASE(fail_resolve, *gTimeout)
 	auto onConnect {[&calledOnConnect](auto ec) {
 		calledOnConnect = true;
 		BOOST_CHECK_EQUAL(ec, boost::asio::error::host_not_found);
+	}};
+
+	client.Connect(onConnect);
+	ioc.run();
+
+	BOOST_CHECK(calledOnConnect);
+}
+
+BOOST_AUTO_TEST_CASE(fail_socket_connect, *gTimeout)
+{
+	const std::string url {"echo.websocket.org"};
+	const std::string endpoint {"/"};
+	const std::string port {"443"};
+
+	boost::asio::ssl::context ctx {boost::asio::ssl::context::tlsv12_client};
+	ctx.load_verify_file(TESTS_CACERT_PEM);
+	boost::asio::io_context ioc {};
+
+	MockTcpStream::connect_ec = boost::asio::error::connection_refused;
+
+	MockWebSocketClient client {url, endpoint, port, ioc, ctx};
+	bool calledOnConnect {false};
+	auto onConnect {[&calledOnConnect](auto ec) {
+		calledOnConnect = true;
+		BOOST_CHECK_EQUAL(ec, boost::asio::error::connection_refused);
 	}};
 
 	client.Connect(onConnect);
