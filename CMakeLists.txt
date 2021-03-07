@@ -20,6 +20,8 @@ set(LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/websocket-client.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/file-downloader.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/transport-network.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/stomp-frame.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/stomp-parser.cpp"
 )
 
 add_library(network-monitor-lib STATIC ${LIB_SOURCES})
@@ -49,7 +51,8 @@ set(
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/file-downloader.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/transport-network.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/client-websocket.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/tests/boost-mock.h")
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/stomp-parser-test.cpp"
+)
 add_executable(network-monitor-tests ${TEST_SOURCES})
 target_compile_features(
     network-monitor-tests
