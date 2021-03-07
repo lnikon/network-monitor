@@ -68,6 +68,12 @@ public:
         std::string_view value;
     };
 
+	struct HeaderCopy
+	{
+		std::string key;
+		std::string value;
+	};
+
 	using Body = std::string_view;
 
     /*! \brief Default constructor. Corresponds to an empty, invalid STOMP frame.
@@ -102,10 +108,20 @@ public:
      */
     StompFrame& operator=(StompFrame&& frame);
 
+	StompCommand GetCommand() const;
+
+	std::vector<HeaderCopy> GetHeaders();
+		
+	std::string GetBody() const;
+
+private:
+	void initialize(StompError& ec);
+
 private:
     std::string m_frame;
 	StompCommand m_command;
 	std::vector<Header> m_headers;
+	Body m_body;
 };
 
 } // namespace NetworkMonitor
