@@ -12,6 +12,28 @@ BOOST_AUTO_TEST_SUITE(network_monitor);
 
 BOOST_AUTO_TEST_SUITE(class_StompParser);
 
+using namespace std::string_literals;
+
+BOOST_AUTO_TEST_CASE(parse_well_formed)
+{
+
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0"s
+    };
+
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+    BOOST_CHECK_EQUAL(frame.GetCommand(), StompCommand::CONNECT);
+    BOOST_CHECK_EQUAL(frame.GetHeaderValue(NetworkMonitor::StompHeaders::ACCEPT_VERSION), std::string{"42"});
+    BOOST_CHECK_EQUAL(frame.GetHeaderValue(NetworkMonitor::StompHeaders::HOST), std::string{"host.com"});
+    BOOST_CHECK_EQUAL(frame.GetBody(), std::string{"Frame body"});
+}
+
 BOOST_AUTO_TEST_CASE(parse_valid_command)
 {
     std::string_view command{"STOMP"};
@@ -72,149 +94,447 @@ BOOST_AUTO_TEST_CASE(parse_empty_header)
     BOOST_CHECK(StompError::EMPTY_HEADER == ec);
 }
 
+BOOST_AUTO_TEST_CASE(parse_well_formed_content_length)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:10\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_empty_body)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_empty_body_content_length)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:0\n"
+        "\n"
+        "\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
 BOOST_AUTO_TEST_CASE(parse_empty_headers)
 {
-    std::string_view header{"\n\n\n\n\n\n"};
-    StompParser parser{header};
-    StompError ec;
-
-    parser.parseHeader(ec);
-    BOOST_CHECK(StompError::EMPTY_HEADER == ec);
-}
-
-BOOST_AUTO_TEST_CASE(parse_valid_header)
-{
-    std::string_view header{"key1:value2\n"};
-    StompParser parser{header};
-    StompError ec;
-
-    auto hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key1" == hdr.key);
-    BOOST_CHECK("value2" == hdr.value);
-}
-
-BOOST_AUTO_TEST_CASE(parse_valid_headers)
-{
-    std::string_view header{"key1:value2\nkey2:value3\nkey3:value4\n\n"};
-    StompParser parser{header};
-    StompError ec;
-
-    auto hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key1" == hdr.key);
-    BOOST_CHECK("value2" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key2" == hdr.key);
-    BOOST_CHECK("value3" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key3" == hdr.key);
-    BOOST_CHECK("value4" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::EMPTY_HEADER == ec);
-}
-
-BOOST_AUTO_TEST_CASE(parse_command_and_headers)
-{
-    std::string_view header{"MESSAGE\nkey1:value2\nkey2:value3\nkey3:value4\n\n"};
-    StompParser parser{header};
-    StompError ec;
-
-    auto cmd = parser.parseCommand(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK(StompCommand::MESSAGE == cmd);
-
-    auto hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key1" == hdr.key);
-    BOOST_CHECK("value2" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key2" == hdr.key);
-    BOOST_CHECK("value3" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key3" == hdr.key);
-    BOOST_CHECK("value4" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::EMPTY_HEADER == ec);
-}
-
-BOOST_AUTO_TEST_CASE(parse_valid_body)
-{
-    std::string_view body{"Any string can be in body!\0"};
-    StompParser parser{body};
-    StompError ec;
-
-    auto bdy = parser.parseBody(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK(bdy == body);
-}
-
-BOOST_AUTO_TEST_CASE(parse_command_and_headers_and_body)
-{
-    std::string_view header{
-        "MESSAGE\nkey1:value2\nkey2:value3\nkey3:value4\n\nAny string can be in body!\0"};
-    StompParser parser{header};
-    StompError ec;
-
-    auto cmd = parser.parseCommand(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK(StompCommand::MESSAGE == cmd);
-
-    auto hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key1" == hdr.key);
-    BOOST_CHECK("value2" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key2" == hdr.key);
-    BOOST_CHECK("value3" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK("key3" == hdr.key);
-    BOOST_CHECK("value4" == hdr.value);
-
-    hdr = parser.parseHeader(ec);
-    BOOST_CHECK(StompError::EMPTY_HEADER == ec);
-
-    std::string_view body{"Any string can be in body!\0"};
-    auto bdy = parser.parseBody(ec);
-    BOOST_CHECK(StompError::OK == ec);
-    BOOST_CHECK(bdy == body);
-}
-
-BOOST_AUTO_TEST_CASE(construct_stomp_frame_by_copy_frame)
-{
-    std::string frm{
-        "MESSAGE\nkey1:value2\nkey2:value3\nkey3:value4\n\nAny string can be in body!\0"};
-
-    StompError ec;
-    StompFrame frame{ec, frm};
-
-    BOOST_CHECK(StompError::OK == ec);
-}
-
-BOOST_AUTO_TEST_CASE(construct_stomp_frame_by_move_frame)
-{
-    StompError ec;
-    StompFrame frame
-    {
-        ec, std::string{
-                "MESSAGE\nkey1:value2\nkey2:value3\nkey3:value4\n\nAny string can be in body!\0"}
+    std::string plain {
+        "DISCONNECT\n"
+        "\n"
+        "Frame body\0"s
     };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
 
-    BOOST_CHECK(StompError::OK == ec);
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_only_command)
+{
+    std::string plain {
+        "DISCONNECT\n"
+        "\n"
+        "\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_bad_command)
+{
+    std::string plain {
+        "CONNECTX\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_bad_header)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "login\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+    BOOST_CHECK(error == StompError::BAD_HEADER);
+}
+
+BOOST_AUTO_TEST_CASE(parse_missing_body_newline)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+    BOOST_CHECK(error == StompError::MISSING_BODY_NEWLINE);
+}
+
+BOOST_AUTO_TEST_CASE(parse_missing_last_header_newline)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com"
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_unrecognized_header)
+{
+    std::string plain {
+        "CONNECT\n"
+        "bad_header:42\n"
+        "host:host.com\n"
+        "\n"
+        "\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_empty_header_value)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:\n"
+        "host:host.com\n"
+        "\n"
+        "\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+    BOOST_CHECK(error == StompError::EMPTY_HEADER_VALUE);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_just_command)
+{
+    std::string plain {
+        "CONNECT"
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_newline_after_command)
+{
+    std::string plain {
+        "DISCONNECT\n"
+        "\n"
+        "version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_double_colon_in_header_line)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42:43\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_repeated_headers)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "accept-version:43\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_repeated_headers_error_in_second)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "accept-version:\n"
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_unterminated_body)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+    BOOST_CHECK(error == StompError::UNTERMINATED_BODY);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_unterminated_body_content_length)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:10\n"
+        "\n"
+        "Frame body"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_junk_after_body)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0\n\njunk\n"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_junk_after_body_content_length)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:10\n"
+        "\n"
+        "Frame body\0\n\njunk\n"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+    BOOST_CHECK(error == StompError::JUNK_AFTER_BODY);
+}
+
+BOOST_AUTO_TEST_CASE(parse_newlines_after_body)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "\n"
+        "Frame body\0\n\n\n"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_newlines_after_body_content_length)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:10\n"
+        "\n"
+        "Frame body\0\n\n\n"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK_EQUAL(error, StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_content_length_wrong_number)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:9\n" // This is one byte off
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+}
+
+BOOST_AUTO_TEST_CASE(parse_content_length_exceeding)
+{
+    std::string plain {
+        "CONNECT\n"
+        "accept-version:42\n"
+        "host:host.com\n"
+        "content-length:15\n" // Way above the actual body length
+        "\n"
+        "Frame body\0"s
+    };
+    StompError error;
+    StompFrame frame {error, std::move(plain)};
+    BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+}
+
+BOOST_AUTO_TEST_CASE(parse_required_headers)
+{
+    StompError error;
+    {
+        std::string plain {
+            "CONNECT\n"
+            "\n"
+            "\0"s
+        };
+        StompFrame frame {error, std::move(plain)};
+        BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+    }
+
+    {
+        std::string plain {
+            "CONNECT\n"
+            "accept-version:42\n"
+            "\n"
+            "\0"s
+        };
+        StompFrame frame {error, std::move(plain)};
+        BOOST_CHECK(error != StompError::OK);
+
+    // Add more checks here.
+    // ...
+    }
+
+    {
+        std::string plain {
+            "CONNECT\n"
+            "accept-version:42\n"
+            "host:host.com\n"
+            "\n"
+            "\0"s
+        };
+        StompFrame frame {error, std::move(plain)};
+
+    // Add more checks here.
+    // ...
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END(); // class_StompParser

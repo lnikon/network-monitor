@@ -10,6 +10,8 @@
 #include <boost/beast/ssl.hpp>
 #include <boost/system/system_error.hpp>
 
+#include <spdlog/spdlog.h>
+
 namespace NetworkMonitor
 {
 
@@ -115,6 +117,7 @@ WebSocketClient<Resolver, WebSocketStream>::WebSocketClient(const std::string& u
     , m_resolver(boost::asio::make_strand(ioc))
     , m_ws(boost::asio::make_strand(ioc), ctx)
 {
+    spdlog::info("WebSocketClient: Create WebSocket client for {}{}:{}", url, endpoint, port);
 }
 
 template <typename Resolver, typename WebSocketStream>
@@ -123,6 +126,8 @@ void WebSocketClient<Resolver, WebSocketStream>::Connect(
     std::function<void(boost::system::error_code, std::string&&)> onMessage,
     std::function<void(boost::system::error_code)> onDisconnect)
 {
+    spdlog::info("WebSocketClient: Attempting to resolve {}{}", m_url, m_endpoint);
+
     m_onConnect = onConnect;
     m_onMessage = onMessage;
     m_onDisconnect = onDisconnect;
@@ -164,6 +169,7 @@ void WebSocketClient<Resolver, WebSocketStream>::onResolve(const boost::system::
     if (ec)
     {
         Log("OnResolve", ec);
+        spdlog::error("WebSocketClient: Unable to resolve {}{}", m_url, m_endpoint);
         if (m_onConnect)
         {
             m_onConnect(ec);
@@ -171,7 +177,13 @@ void WebSocketClient<Resolver, WebSocketStream>::onResolve(const boost::system::
         return;
     }
 
+    spdlog::info("WebSocketClient: Successfully resolved {} to {}",
+                 m_url,
+                 endpoint->endpoint().address().to_string());
+
     boost::beast::get_lowest_layer(m_ws).expires_after(std::chrono::seconds(5));
+
+    spdlog::info("WebSocketClient: Attempting connection to server");
     boost::beast::get_lowest_layer(m_ws).async_connect(*endpoint,
                                                        [this](auto ec) { onConnect(ec); });
 }
@@ -182,6 +194,7 @@ void WebSocketClient<Resolver, WebSocketStream>::onConnect(const boost::system::
     if (ec)
     {
         Log("OnConnect", ec);
+        spdlog::error("WebSocketClient: Unable to connect to server");
         if (m_onConnect)
         {
             m_onConnect(ec);
@@ -189,10 +202,13 @@ void WebSocketClient<Resolver, WebSocketStream>::onConnect(const boost::system::
         return;
     }
 
+    spdlog::info("WebSocketClient: Successfully connected to server");
+
     boost::beast::get_lowest_layer(m_ws).expires_never();
     m_ws.set_option(
         boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
 
+    spdlog::info("WebSocketClient: Attempting Tls handshake");
     m_ws.next_layer().async_handshake(boost::asio::ssl::stream_base::client,
                                       [this](auto ec) { onTlsHandshake(ec); });
 }
@@ -203,6 +219,7 @@ void WebSocketClient<Resolver, WebSocketStream>::onHandshake(const boost::system
     if (ec)
     {
         Log("OnHandshake", ec);
+        spdlog::info("WebSocketClient: Unable to WebSocket handshake");
         if (m_onConnect)
         {
             m_onConnect(ec);
@@ -210,8 +227,11 @@ void WebSocketClient<Resolver, WebSocketStream>::onHandshake(const boost::system
         return;
     }
 
+    spdlog::info("WebSocketClient: WebSocket handshake succeded");
+
     m_ws.text(true);
 
+    spdlog::info("WebSocketClient: Listening to incoming messages");
     listenToIncomingMessage(ec);
 
     if (m_onConnect)
@@ -226,6 +246,7 @@ void WebSocketClient<Resolver, WebSocketStream>::onTlsHandshake(const boost::sys
     if (ec)
     {
         Log("OnTlsHandshake", ec);
+        spdlog::info("WebSocketClient: Unable to Tls handshake");
         if (m_onConnect)
         {
             m_onConnect(ec);
@@ -233,6 +254,8 @@ void WebSocketClient<Resolver, WebSocketStream>::onTlsHandshake(const boost::sys
         return;
     }
 
+    spdlog::info("WebSocketClient: Tls handshake succeded");
+    spdlog::info("WebSocketClient: Attempting WebSocket handshake");
     m_ws.async_handshake(m_url, m_endpoint, [this](auto ec) { onHandshake(ec); });
 }
 

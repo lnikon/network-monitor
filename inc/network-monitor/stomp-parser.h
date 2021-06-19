@@ -26,8 +26,8 @@ public:
     /*! \brief Parses command from a STOMP frame.
      *  Stores operation result in a error code.
      *
-     *  If command is successfully parsed and recognized command enum value is returned,
-     *  otherwise return value is undefined.
+     *  If command is successfully parsed and recognized, command enum value is returned,
+     *  otherwise the return value is undefined.
      */
     StompCommand parseCommand(StompError& ec);
 
@@ -39,10 +39,11 @@ public:
     /*! \brief Parses body from a STOMP frame.
      *  Stores operation result in a error code.
      */
-    StompFrame::Body parseBody(StompError& ec);
+    StompFrame::Body parseBody(StompError& ec, std::size_t contentLength);
 
 private:
     std::unordered_map<std::string_view, StompCommand> m_commandsMap;
+    std::unordered_map<std::string_view, StompHeaders> m_headersMap;
     std::string_view m_frame;
     size_t m_pos{0};
 };
